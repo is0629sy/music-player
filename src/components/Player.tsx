@@ -3,10 +3,24 @@
 import React, { useRef, useState, useEffect } from 'react';
 import YouTube, { YouTubeEvent, YouTubePlayer } from 'react-youtube';
 import { usePlayerStore, Track } from '@/store/playerStore';
-import { Play, Pause, SkipForward, SkipBack, Search, X, Loader2 } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Search, X, Loader2, Volume2, VolumeX } from 'lucide-react';
+
+const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+};
 
 export default function Player() {
-    const { currentTrack, setCurrentTrack, isPlaying, setIsPlaying, volume } = usePlayerStore();
+    const {
+        currentTrack, setCurrentTrack,
+        isPlaying, setIsPlaying,
+        volume, setVolume,
+        duration, setDuration,
+        currentTime, setCurrentTime,
+        playNext, playPrev, addToQueue
+    } = usePlayerStore();
+
     const playerRef = useRef<YouTubePlayer | null>(null);
     const [isVideoReady, setIsVideoReady] = useState(false);
 
@@ -42,20 +56,39 @@ export default function Player() {
         setSearchQuery('');
 
         try {
-            // Set track immediately for quick UI response, without video
             setCurrentTrack({ ...track, youtubeVideoId: null });
             setIsVideoReady(false);
 
-            // Fetch YouTube video ID
             const res = await fetch(`/api/youtube?q=${encodeURIComponent(`${track.artist} ${track.title}`)}`);
             const data = await res.json();
 
-            setCurrentTrack({ ...track, youtubeVideoId: data.videoId });
+            const newTrack = { ...track, youtubeVideoId: data.videoId };
+            setCurrentTrack(newTrack);
             setIsPlaying(true);
+
+            // Also add to queue so next/prev works manually for a simple mockup
+            usePlayerStore.setState(state => ({
+                queue: [...state.queue, newTrack],
+                currentIndex: state.queue.length
+            }));
         } catch (error) {
             console.error(error);
         }
     };
+
+    // Track progress
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (isPlaying && playerRef.current) {
+            interval = setInterval(async () => {
+                try {
+                    const time = await playerRef.current!.getCurrentTime();
+                    setCurrentTime(time || 0);
+                } catch (e) { }
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [isPlaying, setCurrentTime]);
 
     // Sync volume
     useEffect(() => {
@@ -79,6 +112,16 @@ export default function Player() {
         playerRef.current = event.target;
         setIsVideoReady(true);
         event.target.setVolume(volume);
+
+        // Get duration once ready. react-youtube's getDuration() might return a number directly 
+        // instead of a Promise in some versions, or a Promise in others.
+        const durationObj = event.target.getDuration();
+        if (durationObj && typeof durationObj.then === 'function') {
+            durationObj.then((d: number) => setDuration(d)).catch(console.error);
+        } else if (typeof durationObj === 'number') {
+            setDuration(durationObj);
+        }
+
         if (isPlaying) {
             event.target.playVideo();
         }
@@ -222,25 +265,92 @@ export default function Player() {
                                 </div>
                             </div>
 
-                            {/* Controls */}
-                            <div className="flex items-center space-x-8">
-                                <button className="p-3 bg-white/5 hover:bg-white/10 rounded-full transition-all hover:scale-110 active:scale-95">
-                                    <SkipBack className="w-6 h-6 md:w-8 md:h-8" fill="currentColor" />
-                                </button>
-                                <button
-                                    className="p-5 md:p-6 bg-white hover:bg-gray-100 hover:scale-105 rounded-full text-black transition-all shadow-lg active:scale-95"
-                                    onClick={() => setIsPlaying(!isPlaying)}
-                                    aria-label={isPlaying ? "Pause" : "Play"}
-                                >
-                                    {isPlaying ? (
-                                        <Pause className="w-8 h-8 md:w-10 md:h-10" fill="currentColor" />
-                                    ) : (
-                                        <Play className="w-8 h-8 md:w-10 md:h-10 pl-1" fill="currentColor" />
-                                    )}
-                                </button>
-                                <button className="p-3 bg-white/5 hover:bg-white/10 rounded-full transition-all hover:scale-110 active:scale-95">
-                                    <SkipForward className="w-6 h-6 md:w-8 md:h-8" fill="currentColor" />
-                                </button>
+                            {/* Controls Area */}
+                            <div className="w-full flex flex-col items-center space-y-6">
+                                {/* Progress Bar */}
+                                <div className="w-full flex items-center space-x-3 text-xs md:text-sm font-medium text-white/70">
+                                    <span className="w-10 text-right">{formatTime(currentTime)}</span>
+                                    <div
+                                        className="flex-1 h-1.5 md:h-2 bg-white/20 rounded-full cursor-pointer relative group"
+                                        onClick={(e) => {
+                                            if (!playerRef.current) return;
+                                            const rect = e.currentTarget.getBoundingClientRect();
+                                            const pos = (e.clientX - rect.left) / rect.width;
+                                            const newTime = pos * duration;
+                                            playerRef.current.seekTo(newTime, true);
+                                            setCurrentTime(newTime);
+                                        }}
+                                    >
+                                        <div
+                                            className="absolute top-0 left-0 h-full bg-white rounded-full group-hover:bg-green-400 transition-colors"
+                                            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                                        />
+                                    </div>
+                                    <span className="w-10 text-left">{formatTime(duration)}</span>
+                                </div>
+
+                                {/* Main Playback Controls & Volume */}
+                                <div className="w-full flex items-center justify-between">
+                                    {/* Empty spacer or Extra controls for left side */}
+                                    <div className="hidden md:flex flex-1" />
+
+                                    {/* Center Play Controls */}
+                                    <div className="flex flex-1 justify-center items-center space-x-6 md:space-x-8">
+                                        <button
+                                            className="p-3 bg-white/5 hover:bg-white/10 rounded-full transition-all hover:scale-110 active:scale-95"
+                                            onClick={() => playPrev()}
+                                        >
+                                            <SkipBack className="w-6 h-6 md:w-8 md:h-8" fill="currentColor" />
+                                        </button>
+                                        <button
+                                            className="p-5 md:p-6 bg-white hover:bg-gray-100 hover:scale-105 rounded-full text-black transition-all shadow-lg active:scale-95"
+                                            onClick={() => setIsPlaying(!isPlaying)}
+                                            aria-label={isPlaying ? "Pause" : "Play"}
+                                        >
+                                            {isPlaying ? (
+                                                <Pause className="w-8 h-8 md:w-10 md:h-10" fill="currentColor" />
+                                            ) : (
+                                                <Play className="w-8 h-8 md:w-10 md:h-10 pl-1" fill="currentColor" />
+                                            )}
+                                        </button>
+                                        <button
+                                            className="p-3 bg-white/5 hover:bg-white/10 rounded-full transition-all hover:scale-110 active:scale-95"
+                                            onClick={() => playNext()}
+                                        >
+                                            <SkipForward className="w-6 h-6 md:w-8 md:h-8" fill="currentColor" />
+                                        </button>
+                                    </div>
+
+                                    {/* Right Side: Volume Control */}
+                                    <div className="flex flex-1 justify-end items-center space-x-3 hidden md:flex">
+                                        <button onClick={() => setVolume(volume === 0 ? 100 : 0)}>
+                                            {volume === 0 ? <VolumeX className="w-5 h-5 text-white/70" /> : <Volume2 className="w-5 h-5 text-white/70" />}
+                                        </button>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="100"
+                                            value={volume}
+                                            onChange={(e) => setVolume(Number(e.target.value))}
+                                            className="w-24 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Mobile version Volume Control */}
+                                <div className="flex md:hidden w-full items-center justify-center space-x-3 pt-4">
+                                    <button onClick={() => setVolume(volume === 0 ? 100 : 0)}>
+                                        {volume === 0 ? <VolumeX className="w-4 h-4 text-white/70" /> : <Volume2 className="w-4 h-4 text-white/70" />}
+                                    </button>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        value={volume}
+                                        onChange={(e) => setVolume(Number(e.target.value))}
+                                        className="w-48 h-1 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
+                                    />
+                                </div>
                             </div>
                         </>
                     ) : (
