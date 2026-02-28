@@ -3,7 +3,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import YouTube, { YouTubeEvent, YouTubePlayer } from 'react-youtube';
 import { usePlayerStore, Track } from '@/store/playerStore';
-import { Play, Pause, SkipForward, SkipBack, Search, X, Loader2, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Search, X, Loader2, Volume2, VolumeX, Info } from 'lucide-react';
 
 const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -33,6 +33,7 @@ export default function Player() {
     const [searchResults, setSearchResults] = useState<Track[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [showDropdown, setShowDropdown] = useState(false);
+    const [showHowToUse, setShowHowToUse] = useState(false);
 
     // Debounce search effect
     useEffect(() => {
@@ -196,7 +197,17 @@ export default function Player() {
                         VibePlayer
                     </div>
 
-                    <div className="relative z-50 flex items-center">
+                    <div className="relative z-50 flex items-center space-x-3 sm:space-x-4">
+                        {/* 使い方ボタン */}
+                        <button
+                            onClick={() => setShowHowToUse(true)}
+                            className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white/70 hover:text-white"
+                            aria-label="使い方を表示"
+                            title="使い方を表示"
+                        >
+                            <Info className="w-5 h-5" />
+                        </button>
+
                         {/* Search Input */}
                         <div className="flex items-center bg-white/10 hover:bg-white/20 transition-all rounded-full border border-white/20 px-4 h-10 w-48 sm:w-64 focus-within:w-64 sm:focus-within:w-80 focus-within:bg-white/20">
                             {isSearching ? (
@@ -399,6 +410,47 @@ export default function Player() {
                     Powered by YouTube & Spotify
                 </footer>
             </div>
+
+            {/* How to Use Modal */}
+            {showHowToUse && (
+                <div className="absolute inset-0 z-[100] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setShowHowToUse(false)} />
+                    <div className="relative bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl">
+                        <button
+                            onClick={() => setShowHowToUse(false)}
+                            className="absolute top-4 right-4 p-1 text-white/50 hover:text-white transition-colors rounded-full hover:bg-white/10"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <h3 className="text-xl font-bold mb-6 text-white flex items-center">
+                            <Info className="w-5 h-5 mr-3" />
+                            使い方
+                        </h3>
+                        <div className="space-y-5 text-sm md:text-base text-white/80 leading-relaxed">
+                            <p>
+                                <strong className="text-white block mb-1">曲を検索・再生</strong>
+                                右上の検索バーに曲名やアーティスト名を入力し、候補から選択すると再生が始まります。
+                            </p>
+                            <p>
+                                <strong className="text-white block mb-1">再生コントロール</strong>
+                                画面中央のボタンで再生・一時停止や、前後の曲へのスキップ操作が可能です。
+                            </p>
+                            <p>
+                                <strong className="text-white block mb-1">シークバーと音量</strong>
+                                プログレスバーのクリックやドラッグで再生位置を変更できます。音量アイコンでミュート・調節が可能です。
+                            </p>
+                        </div>
+                        <div className="mt-8 border-t border-white/10 pt-6">
+                            <button
+                                onClick={() => setShowHowToUse(false)}
+                                className="w-full py-3 rounded-xl bg-white text-black font-bold hover:bg-gray-200 transition-colors active:scale-95"
+                            >
+                                閉じる
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
