@@ -406,8 +406,17 @@ export default function Player() {
                 </div>
 
                 {/* Footer Credit */}
-                <footer className="w-full text-center md:text-right text-xs md:text-sm text-white/40 font-medium">
-                    Powered by YouTube & Spotify
+                <footer className="w-full flex flex-col-reverse md:flex-row justify-between items-center md:items-end gap-2 text-xs md:text-sm text-white/40 font-medium">
+                    <div className="text-left">
+                        &copy; {(() => {
+                            const currentYear = new Date().getFullYear();
+                            const startYear = 2026;
+                            return currentYear === startYear ? startYear : `${startYear}-${currentYear}`;
+                        })()} is0629sy. All rights reserved.
+                    </div>
+                    <div className="text-center md:text-right">
+                        Powered by YouTube & Spotify
+                    </div>
                 </footer>
             </div>
 
