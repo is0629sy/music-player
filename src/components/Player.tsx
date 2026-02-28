@@ -2,13 +2,60 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import YouTube, { YouTubeEvent, YouTubePlayer } from 'react-youtube';
-import { usePlayerStore } from '@/store/playerStore';
-import { Play, Pause, SkipForward, SkipBack } from 'lucide-react';
+import { usePlayerStore, Track } from '@/store/playerStore';
+import { Play, Pause, SkipForward, SkipBack, Search, X, Loader2 } from 'lucide-react';
 
 export default function Player() {
-    const { currentTrack, isPlaying, setIsPlaying, volume } = usePlayerStore();
+    const { currentTrack, setCurrentTrack, isPlaying, setIsPlaying, volume } = usePlayerStore();
     const playerRef = useRef<YouTubePlayer | null>(null);
     const [isVideoReady, setIsVideoReady] = useState(false);
+
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<Track[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showDropdown, setShowDropdown] = useState(false);
+
+    // Debounce search effect
+    useEffect(() => {
+        const timer = setTimeout(async () => {
+            if (!searchQuery.trim()) {
+                setSearchResults([]);
+                return;
+            }
+            setIsSearching(true);
+            try {
+                const res = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+                const data = await res.json();
+                setSearchResults(data.tracks || []);
+                setShowDropdown(true);
+            } catch (error) {
+                console.error(error);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    const handleSelectTrack = async (track: Track) => {
+        setShowDropdown(false);
+        setSearchQuery('');
+
+        try {
+            // Set track immediately for quick UI response, without video
+            setCurrentTrack({ ...track, youtubeVideoId: null });
+            setIsVideoReady(false);
+
+            // Fetch YouTube video ID
+            const res = await fetch(`/api/youtube?q=${encodeURIComponent(`${track.artist} ${track.title}`)}`);
+            const data = await res.json();
+
+            setCurrentTrack({ ...track, youtubeVideoId: data.videoId });
+            setIsPlaying(true);
+        } catch (error) {
+            console.error(error);
+        }
+    };
 
     // Sync volume
     useEffect(() => {
@@ -83,21 +130,73 @@ export default function Player() {
             <div
                 className="absolute inset-0 z-10 pointer-events-none"
                 style={{
-                    backdropFilter: 'blur(20px) brightness(0.6)',
-                    WebkitBackdropFilter: 'blur(20px) brightness(0.6)',
+                    backdropFilter: 'blur(10px) brightness(0.6)',
+                    WebkitBackdropFilter: 'blur(10px) brightness(0.6)',
                 }}
             />
 
             {/* Foreground Layer: Controls & Info */}
             <div className="absolute inset-0 z-20 flex flex-col justify-between p-6 md:p-12">
                 {/* Header */}
-                <header className="flex justify-between items-center w-full">
+                <header className="flex justify-between items-center w-full relative hover:z-50">
                     <div className="font-bold text-xl md:text-2xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/70">
                         VibePlayer
                     </div>
-                    {/* Static Search Input Placeholder */}
-                    <div className="w-48 sm:w-64 h-10 bg-white/10 hover:bg-white/20 transition-colors rounded-full border border-white/20 px-4 flex items-center cursor-pointer">
-                        <span className="text-sm text-white/70">Search tracks...</span>
+
+                    <div className="relative z-50 flex items-center">
+                        {/* Search Input */}
+                        <div className="flex items-center bg-white/10 hover:bg-white/20 transition-all rounded-full border border-white/20 px-4 h-10 w-48 sm:w-64 focus-within:w-64 sm:focus-within:w-80 focus-within:bg-white/20">
+                            {isSearching ? (
+                                <Loader2 className="w-4 h-4 text-white/50 animate-spin mr-2 shrink-0" />
+                            ) : (
+                                <Search className="w-4 h-4 text-white/50 mr-2 shrink-0" />
+                            )}
+                            <input
+                                type="text"
+                                placeholder="Search tracks..."
+                                className="bg-transparent border-none outline-none text-sm w-full text-white placeholder:text-white/50"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                onFocus={() => {
+                                    if (searchResults.length > 0) setShowDropdown(true);
+                                }}
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => {
+                                        setSearchQuery('');
+                                        setSearchResults([]);
+                                        setShowDropdown(false);
+                                    }}
+                                    className="shrink-0"
+                                >
+                                    <X className="w-4 h-4 text-white/50 hover:text-white ml-2" />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Results Dropdown */}
+                        {showDropdown && searchResults.length > 0 && (
+                            <div className="absolute top-12 right-0 w-64 sm:w-80 max-h-[60vh] overflow-y-auto bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-2 z-[60]">
+                                {searchResults.map((track) => (
+                                    <button
+                                        key={track.id}
+                                        className="w-full flex items-center p-2 hover:bg-white/10 rounded-xl transition-colors text-left"
+                                        onClick={() => handleSelectTrack(track)}
+                                    >
+                                        <img
+                                            src={track.artworkUrl}
+                                            alt={track.title}
+                                            className="w-12 h-12 rounded object-cover mr-3 bg-white/5"
+                                        />
+                                        <div className="flex-1 overflow-hidden">
+                                            <div className="text-sm font-bold truncate text-white">{track.title}</div>
+                                            <div className="text-xs truncate text-white/60">{track.artist}</div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </header>
 
