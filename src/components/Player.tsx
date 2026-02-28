@@ -35,6 +35,10 @@ export default function Player() {
     const [showDropdown, setShowDropdown] = useState(false);
     const [showHowToUse, setShowHowToUse] = useState(false);
 
+    // Search animation states
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
+    const isSearchActive = !!currentTrack || isSearchFocused || searchQuery.length > 0 || showDropdown;
+
     // Debounce search effect
     useEffect(() => {
         const timer = setTimeout(async () => {
@@ -207,69 +211,95 @@ export default function Player() {
                         >
                             <Info className="w-5 h-5" />
                         </button>
-
-                        {/* Search Input & Results (Only show in header if there is a current track) */}
-                        {currentTrack && (
-                            <>
-                                <div className="flex items-center bg-white/10 hover:bg-white/20 transition-all rounded-full border border-white/20 px-4 h-10 w-48 sm:w-64 focus-within:w-64 sm:focus-within:w-80 focus-within:bg-white/20">
-                                    {isSearching ? (
-                                        <Loader2 className="w-4 h-4 text-white/50 animate-spin mr-2 shrink-0" />
-                                    ) : (
-                                        <Search className="w-4 h-4 text-white/50 mr-2 shrink-0" />
-                                    )}
-                                    <input
-                                        type="text"
-                                        placeholder="Search tracks..."
-                                        className="bg-transparent border-none outline-none text-sm w-full text-white placeholder:text-white/50"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        onFocus={() => {
-                                            if (searchResults.length > 0) setShowDropdown(true);
-                                        }}
-                                    />
-                                    {searchQuery && (
-                                        <button
-                                            onClick={() => {
-                                                setSearchQuery('');
-                                                setSearchResults([]);
-                                                setShowDropdown(false);
-                                            }}
-                                            className="shrink-0"
-                                        >
-                                            <X className="w-4 h-4 text-white/50 hover:text-white ml-2" />
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* Results Dropdown */}
-                                {showDropdown && searchResults.length > 0 && (
-                                    <div className="absolute top-12 right-0 w-64 sm:w-80 max-h-[60vh] overflow-y-auto bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-2 z-[60]">
-                                        {searchResults.map((track) => (
-                                            <button
-                                                key={track.id}
-                                                className="w-full flex items-center p-2 hover:bg-white/10 rounded-xl transition-colors text-left"
-                                                onClick={() => handleSelectTrack(track)}
-                                            >
-                                                <img
-                                                    src={track.artworkUrl}
-                                                    alt={track.title}
-                                                    className="w-12 h-12 rounded object-cover mr-3 bg-white/5"
-                                                />
-                                                <div className="flex-1 overflow-hidden">
-                                                    <div className="text-sm font-bold truncate text-white">{track.title}</div>
-                                                    <div className="text-xs truncate text-white/60">{track.artist}</div>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </>
-                        )}
                     </div>
                 </header>
 
+                {/* Unified Animated Search Bar */}
+                <div
+                    className={`absolute left-1/2 -translate-x-1/2 z-[60] transition-all duration-1000 ease-in-out flex flex-col items-center w-full max-w-2xl px-4 md:px-0
+                        ${isSearchActive
+                            ? 'top-6 md:top-12 scale-100'
+                            : 'top-1/2 -translate-y-1/2 scale-105'}`}
+                >
+                    {/* Welcome Text (Only visible when centered) */}
+                    <div
+                        className={`absolute bottom-full mb-6 md:mb-8 flex flex-col items-center space-y-4 text-center px-4 w-full transition-all duration-700 origin-bottom
+                            ${isSearchActive ? 'opacity-0 scale-95 pointer-events-none' : 'opacity-100 scale-100'}`}
+                    >
+                        <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-white to-white/60">
+                            さあ、音楽を探そう
+                        </h1>
+                        <p className="text-white/60 text-base md:text-xl max-w-md">
+                            お気に入りの曲名やアーティスト名を入力して、再生を始めましょう。
+                        </p>
+                    </div>
+
+                    {/* Search Input */}
+                    <div className={`relative flex items-center bg-black/40 backdrop-blur-xl hover:bg-white/20 transition-all duration-500 rounded-full border border-white/20 focus-within:bg-white/20 focus-within:border-white/50 focus-within:ring-4 focus-within:ring-white/10 shadow-2xl mx-auto
+                        ${isSearchActive ? 'h-10 md:h-12 w-64 sm:w-80 md:w-96 px-4' : 'h-14 md:h-16 w-full px-6'}`}
+                    >
+                        {isSearching ? (
+                            <Loader2 className={`text-white/50 animate-spin shrink-0 transition-all ${isSearchActive ? 'w-4 h-4 mr-2' : 'w-6 h-6 mr-3'}`} />
+                        ) : (
+                            <Search className={`text-white/50 shrink-0 transition-all ${isSearchActive ? 'w-4 h-4 mr-2' : 'w-6 h-6 mr-3'}`} />
+                        )}
+                        <input
+                            type="text"
+                            placeholder="曲名、アーティスト名で検索..."
+                            className={`bg-transparent border-none outline-none w-full text-white placeholder:text-white/50 transition-all ${isSearchActive ? 'text-sm' : 'text-base md:text-xl'}`}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onFocus={() => {
+                                setIsSearchFocused(true);
+                                if (searchResults.length > 0) setShowDropdown(true);
+                            }}
+                            onBlur={() => {
+                                setTimeout(() => setIsSearchFocused(false), 200);
+                            }}
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => {
+                                    setSearchQuery('');
+                                    setSearchResults([]);
+                                    setShowDropdown(false);
+                                    setIsSearchFocused(true);
+                                }}
+                                className="shrink-0 p-2"
+                            >
+                                <X className={`text-white/50 hover:text-white transition-all ${isSearchActive ? 'w-4 h-4' : 'w-5 h-5'}`} />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Results Dropdown */}
+                    <div className={`w-full overflow-hidden transition-all duration-500 ease-in-out absolute left-0 right-0 ${isSearchActive ? 'top-[calc(100%+0.5rem)]' : 'top-[calc(100%+1rem)]'}`}>
+                        {showDropdown && searchResults.length > 0 && (
+                            <div className="max-h-60 md:max-h-80 overflow-y-auto bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-2 mx-auto w-full max-w-xl">
+                                {searchResults.map((track) => (
+                                    <button
+                                        key={track.id}
+                                        className="w-full flex items-center p-3 hover:bg-white/10 rounded-xl transition-colors text-left"
+                                        onClick={() => handleSelectTrack(track)}
+                                    >
+                                        <img
+                                            src={track.artworkUrl}
+                                            alt={track.title}
+                                            className="w-12 h-12 md:w-14 md:h-14 rounded-lg object-cover mr-4 bg-white/5 shadow-md"
+                                        />
+                                        <div className="flex-1 overflow-hidden">
+                                            <div className="text-sm md:text-base font-bold truncate text-white">{track.title}</div>
+                                            <div className="text-xs md:text-sm truncate text-white/60">{track.artist}</div>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+
                 {/* Player Controls */}
-                <div className="flex flex-col items-center w-full max-w-2xl mx-auto space-y-8 md:space-y-12 pb-4">
+                <div className="flex flex-col items-center w-full max-w-2xl mx-auto space-y-8 md:space-y-12 pb-4 pt-12 md:pt-16">
                     {currentTrack ? (
                         <>
                             {/* Artwork & Info */}
@@ -402,88 +432,24 @@ export default function Player() {
                                 </div>
                             </div>
                         </>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center w-full h-full min-h-[50vh] space-y-8 animate-in fade-in zoom-in-95 duration-700 mt-10 md:mt-20">
-                            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-white to-white/60 text-center px-4">
-                                さあ、音楽を探そう
-                            </h1>
-
-                            <div className="relative w-full max-w-xl z-50 px-4 md:px-0">
-                                <div className="flex items-center bg-white/10 hover:bg-white/20 transition-all rounded-full border border-white/20 px-6 h-14 md:h-16 w-full focus-within:bg-white/20 focus-within:ring-2 focus-within:ring-white/50 shadow-2xl">
-                                    {isSearching ? (
-                                        <Loader2 className="w-6 h-6 text-white/50 animate-spin mr-3 shrink-0" />
-                                    ) : (
-                                        <Search className="w-6 h-6 text-white/50 mr-3 shrink-0" />
-                                    )}
-                                    <input
-                                        type="text"
-                                        placeholder="曲名、アーティスト名で検索..."
-                                        className="bg-transparent border-none outline-none text-base md:text-xl w-full text-white placeholder:text-white/50"
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        onFocus={() => {
-                                            if (searchResults.length > 0) setShowDropdown(true);
-                                        }}
-                                    />
-                                    {searchQuery && (
-                                        <button
-                                            onClick={() => {
-                                                setSearchQuery('');
-                                                setSearchResults([]);
-                                                setShowDropdown(false);
-                                            }}
-                                            className="shrink-0 p-2"
-                                        >
-                                            <X className="w-5 h-5 text-white/50 hover:text-white" />
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* Results Dropdown (Centered) */}
-                                {showDropdown && searchResults.length > 0 && (
-                                    <div className="absolute top-[calc(100%+0.5rem)] left-0 md:left-0 right-0 mx-4 md:mx-0 max-h-[50vh] overflow-y-auto bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-2 z-[60]">
-                                        {searchResults.map((track) => (
-                                            <button
-                                                key={track.id}
-                                                className="w-full flex items-center p-3 hover:bg-white/10 rounded-xl transition-colors text-left"
-                                                onClick={() => handleSelectTrack(track)}
-                                            >
-                                                <img
-                                                    src={track.artworkUrl}
-                                                    alt={track.title}
-                                                    className="w-14 h-14 rounded-lg object-cover mr-4 bg-white/5 shadow-md"
-                                                />
-                                                <div className="flex-1 overflow-hidden">
-                                                    <div className="text-base font-bold truncate text-white">{track.title}</div>
-                                                    <div className="text-sm truncate text-white/60">{track.artist}</div>
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            <p className="text-white/60 text-base md:text-xl max-w-md text-center px-4">
-                                お気に入りの曲名やアーティスト名を入力して、再生を始めましょう。
-                            </p>
-                        </div>
-                    )}
+                    ) : null}
                 </div>
 
-                {/* Footer Credit */}
-                <footer className="w-full flex flex-col-reverse md:flex-row justify-between items-center md:items-end gap-2 text-xs md:text-sm text-white/40 font-medium">
-                    <div className="text-left">
-                        &copy; {(() => {
-                            const currentYear = new Date().getFullYear();
-                            const startYear = 2026;
-                            return currentYear === startYear ? startYear : `${startYear}-${currentYear}`;
-                        })()} is0629sy. All rights reserved.
-                    </div>
-                    <div className="text-center md:text-right">
-                        Powered by YouTube & Spotify
-                    </div>
-                </footer>
             </div>
+
+            {/* Absolute Footer Credit (Locked position) */}
+            <footer className="absolute bottom-0 left-0 right-0 w-full z-30 flex flex-col-reverse md:flex-row justify-between items-center md:items-end gap-2 text-xs md:text-sm text-white/40 font-medium pb-8 md:pb-12 px-6 md:px-12 pointer-events-none">
+                <div className="text-left pointer-events-auto">
+                    &copy; {(() => {
+                        const currentYear = new Date().getFullYear();
+                        const startYear = 2026;
+                        return currentYear === startYear ? startYear : `${startYear}-${currentYear}`;
+                    })()} is0629sy. All rights reserved.
+                </div>
+                <div className="text-center md:text-right pointer-events-auto">
+                    Powered by YouTube & Spotify
+                </div>
+            </footer>
 
             {/* How to Use Modal */}
             {showHowToUse && (
