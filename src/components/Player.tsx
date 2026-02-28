@@ -18,7 +18,8 @@ export default function Player() {
         volume, setVolume,
         duration, setDuration,
         currentTime, setCurrentTime,
-        playNext, playPrev, addToQueue
+        playNext, playPrev, addToQueue,
+        queue, currentIndex
     } = usePlayerStore();
 
     const playerRef = useRef<YouTubePlayer | null>(null);
@@ -297,8 +298,9 @@ export default function Player() {
                                     {/* Center Play Controls */}
                                     <div className="flex flex-1 justify-center items-center space-x-6 md:space-x-8">
                                         <button
-                                            className="p-3 bg-white/5 hover:bg-white/10 rounded-full transition-all hover:scale-110 active:scale-95"
-                                            onClick={() => playPrev()}
+                                            className={`p-3 rounded-full transition-all flex items-center justify-center ${currentIndex <= 0 ? 'text-white/30 cursor-not-allowed' : 'bg-white/5 hover:bg-white/10 hover:scale-110 active:scale-95 text-white'}`}
+                                            onClick={() => { if (currentIndex > 0) playPrev() }}
+                                            disabled={currentIndex <= 0}
                                         >
                                             <SkipBack className="w-6 h-6 md:w-8 md:h-8" fill="currentColor" />
                                         </button>
@@ -314,8 +316,9 @@ export default function Player() {
                                             )}
                                         </button>
                                         <button
-                                            className="p-3 bg-white/5 hover:bg-white/10 rounded-full transition-all hover:scale-110 active:scale-95"
-                                            onClick={() => playNext()}
+                                            className={`p-3 rounded-full transition-all flex items-center justify-center ${queue.length === 0 || currentIndex >= queue.length - 1 ? 'text-white/30 cursor-not-allowed' : 'bg-white/5 hover:bg-white/10 hover:scale-110 active:scale-95 text-white'}`}
+                                            onClick={() => { if (queue.length > 0 && currentIndex < queue.length - 1) playNext() }}
+                                            disabled={queue.length === 0 || currentIndex >= queue.length - 1}
                                         >
                                             <SkipForward className="w-6 h-6 md:w-8 md:h-8" fill="currentColor" />
                                         </button>
