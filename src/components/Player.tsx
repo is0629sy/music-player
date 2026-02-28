@@ -25,6 +25,10 @@ export default function Player() {
     const playerRef = useRef<YouTubePlayer | null>(null);
     const [isVideoReady, setIsVideoReady] = useState(false);
 
+    // Seekbar dragging state
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragTime, setDragTime] = useState(0);
+
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<Track[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -80,16 +84,21 @@ export default function Player() {
     // Track progress
     useEffect(() => {
         let interval: NodeJS.Timeout;
-        if (isPlaying && playerRef.current) {
+        if (isPlaying && isVideoReady && playerRef.current) {
             interval = setInterval(async () => {
                 try {
-                    const time = await playerRef.current!.getCurrentTime();
-                    setCurrentTime(time || 0);
+                    // Make sure we handle Promise/number correctly again based on react-youtube version
+                    const timeObj = playerRef.current!.getCurrentTime();
+                    if (timeObj && typeof timeObj.then === 'function') {
+                        timeObj.then((t: number) => setCurrentTime(t || 0)).catch(() => { });
+                    } else if (typeof timeObj === 'number') {
+                        setCurrentTime(timeObj || 0);
+                    }
                 } catch (e) { }
-            }, 1000);
+            }, 500);
         }
         return () => clearInterval(interval);
-    }, [isPlaying, setCurrentTime]);
+    }, [isPlaying, isVideoReady, setCurrentTime]);
 
     // Sync volume
     useEffect(() => {
@@ -270,21 +279,43 @@ export default function Player() {
                             <div className="w-full flex flex-col items-center space-y-6">
                                 {/* Progress Bar */}
                                 <div className="w-full flex items-center space-x-3 text-xs md:text-sm font-medium text-white/70">
-                                    <span className="w-10 text-right">{formatTime(currentTime)}</span>
+                                    <span className="w-10 text-right">
+                                        {formatTime(isDragging ? dragTime : currentTime)}
+                                    </span>
                                     <div
                                         className="flex-1 h-1.5 md:h-2 bg-white/20 rounded-full cursor-pointer relative group"
-                                        onClick={(e) => {
-                                            if (!playerRef.current) return;
+                                        onPointerDown={(e) => {
+                                            if (!playerRef.current || duration === 0) return;
+                                            setIsDragging(true);
                                             const rect = e.currentTarget.getBoundingClientRect();
-                                            const pos = (e.clientX - rect.left) / rect.width;
-                                            const newTime = pos * duration;
-                                            playerRef.current.seekTo(newTime, true);
-                                            setCurrentTime(newTime);
+                                            const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                                            setDragTime(pos * duration);
+
+                                            // Optional: handle drag move/up by attaching to window
+                                            const handlePointerMove = (moveEvent: PointerEvent) => {
+                                                const movePos = Math.max(0, Math.min(1, (moveEvent.clientX - rect.left) / rect.width));
+                                                setDragTime(movePos * duration);
+                                            };
+                                            const handlePointerUp = (upEvent: PointerEvent) => {
+                                                const finalPos = Math.max(0, Math.min(1, (upEvent.clientX - rect.left) / rect.width));
+                                                const newTime = finalPos * duration;
+                                                playerRef.current?.seekTo(newTime, true);
+                                                setCurrentTime(newTime);
+                                                setIsDragging(false);
+
+                                                window.removeEventListener('pointermove', handlePointerMove);
+                                                window.removeEventListener('pointerup', handlePointerUp);
+                                            };
+
+                                            window.addEventListener('pointermove', handlePointerMove);
+                                            window.addEventListener('pointerup', handlePointerUp);
                                         }}
                                     >
                                         <div
-                                            className="absolute top-0 left-0 h-full bg-white rounded-full group-hover:bg-green-400 transition-colors"
-                                            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                                            className="absolute top-0 left-0 h-full bg-white rounded-full group-hover:bg-green-400 transition-none"
+                                            style={{
+                                                width: `${duration > 0 ? ((isDragging ? dragTime : currentTime) / duration) * 100 : 0}%`
+                                            }}
                                         />
                                     </div>
                                     <span className="w-10 text-left">{formatTime(duration)}</span>
