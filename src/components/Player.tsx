@@ -208,58 +208,62 @@ export default function Player() {
                             <Info className="w-5 h-5" />
                         </button>
 
-                        {/* Search Input */}
-                        <div className="flex items-center bg-white/10 hover:bg-white/20 transition-all rounded-full border border-white/20 px-4 h-10 w-48 sm:w-64 focus-within:w-64 sm:focus-within:w-80 focus-within:bg-white/20">
-                            {isSearching ? (
-                                <Loader2 className="w-4 h-4 text-white/50 animate-spin mr-2 shrink-0" />
-                            ) : (
-                                <Search className="w-4 h-4 text-white/50 mr-2 shrink-0" />
-                            )}
-                            <input
-                                type="text"
-                                placeholder="Search tracks..."
-                                className="bg-transparent border-none outline-none text-sm w-full text-white placeholder:text-white/50"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onFocus={() => {
-                                    if (searchResults.length > 0) setShowDropdown(true);
-                                }}
-                            />
-                            {searchQuery && (
-                                <button
-                                    onClick={() => {
-                                        setSearchQuery('');
-                                        setSearchResults([]);
-                                        setShowDropdown(false);
-                                    }}
-                                    className="shrink-0"
-                                >
-                                    <X className="w-4 h-4 text-white/50 hover:text-white ml-2" />
-                                </button>
-                            )}
-                        </div>
+                        {/* Search Input & Results (Only show in header if there is a current track) */}
+                        {currentTrack && (
+                            <>
+                                <div className="flex items-center bg-white/10 hover:bg-white/20 transition-all rounded-full border border-white/20 px-4 h-10 w-48 sm:w-64 focus-within:w-64 sm:focus-within:w-80 focus-within:bg-white/20">
+                                    {isSearching ? (
+                                        <Loader2 className="w-4 h-4 text-white/50 animate-spin mr-2 shrink-0" />
+                                    ) : (
+                                        <Search className="w-4 h-4 text-white/50 mr-2 shrink-0" />
+                                    )}
+                                    <input
+                                        type="text"
+                                        placeholder="Search tracks..."
+                                        className="bg-transparent border-none outline-none text-sm w-full text-white placeholder:text-white/50"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onFocus={() => {
+                                            if (searchResults.length > 0) setShowDropdown(true);
+                                        }}
+                                    />
+                                    {searchQuery && (
+                                        <button
+                                            onClick={() => {
+                                                setSearchQuery('');
+                                                setSearchResults([]);
+                                                setShowDropdown(false);
+                                            }}
+                                            className="shrink-0"
+                                        >
+                                            <X className="w-4 h-4 text-white/50 hover:text-white ml-2" />
+                                        </button>
+                                    )}
+                                </div>
 
-                        {/* Results Dropdown */}
-                        {showDropdown && searchResults.length > 0 && (
-                            <div className="absolute top-12 right-0 w-64 sm:w-80 max-h-[60vh] overflow-y-auto bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-2 z-[60]">
-                                {searchResults.map((track) => (
-                                    <button
-                                        key={track.id}
-                                        className="w-full flex items-center p-2 hover:bg-white/10 rounded-xl transition-colors text-left"
-                                        onClick={() => handleSelectTrack(track)}
-                                    >
-                                        <img
-                                            src={track.artworkUrl}
-                                            alt={track.title}
-                                            className="w-12 h-12 rounded object-cover mr-3 bg-white/5"
-                                        />
-                                        <div className="flex-1 overflow-hidden">
-                                            <div className="text-sm font-bold truncate text-white">{track.title}</div>
-                                            <div className="text-xs truncate text-white/60">{track.artist}</div>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
+                                {/* Results Dropdown */}
+                                {showDropdown && searchResults.length > 0 && (
+                                    <div className="absolute top-12 right-0 w-64 sm:w-80 max-h-[60vh] overflow-y-auto bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-2 z-[60]">
+                                        {searchResults.map((track) => (
+                                            <button
+                                                key={track.id}
+                                                className="w-full flex items-center p-2 hover:bg-white/10 rounded-xl transition-colors text-left"
+                                                onClick={() => handleSelectTrack(track)}
+                                            >
+                                                <img
+                                                    src={track.artworkUrl}
+                                                    alt={track.title}
+                                                    className="w-12 h-12 rounded object-cover mr-3 bg-white/5"
+                                                />
+                                                <div className="flex-1 overflow-hidden">
+                                                    <div className="text-sm font-bold truncate text-white">{track.title}</div>
+                                                    <div className="text-xs truncate text-white/60">{track.artist}</div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </header>
@@ -399,8 +403,69 @@ export default function Player() {
                             </div>
                         </>
                     ) : (
-                        <div className="text-center text-white/50 animate-pulse">
-                            <p className="text-lg">Click the search bar to find a track</p>
+                        <div className="flex flex-col items-center justify-center w-full h-full min-h-[50vh] space-y-8 animate-in fade-in zoom-in-95 duration-700 mt-10 md:mt-20">
+                            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-white to-white/60 text-center px-4">
+                                さあ、音楽を探そう
+                            </h1>
+
+                            <div className="relative w-full max-w-xl z-50 px-4 md:px-0">
+                                <div className="flex items-center bg-white/10 hover:bg-white/20 transition-all rounded-full border border-white/20 px-6 h-14 md:h-16 w-full focus-within:bg-white/20 focus-within:ring-2 focus-within:ring-white/50 shadow-2xl">
+                                    {isSearching ? (
+                                        <Loader2 className="w-6 h-6 text-white/50 animate-spin mr-3 shrink-0" />
+                                    ) : (
+                                        <Search className="w-6 h-6 text-white/50 mr-3 shrink-0" />
+                                    )}
+                                    <input
+                                        type="text"
+                                        placeholder="曲名、アーティスト名で検索..."
+                                        className="bg-transparent border-none outline-none text-base md:text-xl w-full text-white placeholder:text-white/50"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        onFocus={() => {
+                                            if (searchResults.length > 0) setShowDropdown(true);
+                                        }}
+                                    />
+                                    {searchQuery && (
+                                        <button
+                                            onClick={() => {
+                                                setSearchQuery('');
+                                                setSearchResults([]);
+                                                setShowDropdown(false);
+                                            }}
+                                            className="shrink-0 p-2"
+                                        >
+                                            <X className="w-5 h-5 text-white/50 hover:text-white" />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Results Dropdown (Centered) */}
+                                {showDropdown && searchResults.length > 0 && (
+                                    <div className="absolute top-[calc(100%+0.5rem)] left-0 md:left-0 right-0 mx-4 md:mx-0 max-h-[50vh] overflow-y-auto bg-black/80 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-2 z-[60]">
+                                        {searchResults.map((track) => (
+                                            <button
+                                                key={track.id}
+                                                className="w-full flex items-center p-3 hover:bg-white/10 rounded-xl transition-colors text-left"
+                                                onClick={() => handleSelectTrack(track)}
+                                            >
+                                                <img
+                                                    src={track.artworkUrl}
+                                                    alt={track.title}
+                                                    className="w-14 h-14 rounded-lg object-cover mr-4 bg-white/5 shadow-md"
+                                                />
+                                                <div className="flex-1 overflow-hidden">
+                                                    <div className="text-base font-bold truncate text-white">{track.title}</div>
+                                                    <div className="text-sm truncate text-white/60">{track.artist}</div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            <p className="text-white/60 text-base md:text-xl max-w-md text-center px-4">
+                                お気に入りの曲名やアーティスト名を入力して、再生を始めましょう。
+                            </p>
                         </div>
                     )}
                 </div>
